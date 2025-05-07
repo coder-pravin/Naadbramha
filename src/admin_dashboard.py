@@ -1,6 +1,8 @@
 import tkinter as tk
 from attendance_page import show_attendance_page  # Make sure this file exists and is correct
 from inventory_page import record_inventory_page
+from salary_page import show_salary_page
+from logout import perform_logout
 def show_admin_dashboard(container):
     # Clear any existing content in the main container
     for widget in container.winfo_children():
@@ -38,12 +40,9 @@ def show_admin_dashboard(container):
         record_inventory_page(content_frame)
     def show_salary():
         clear_content()
-        tk.Label(content_frame, text="Salary Page", font=("Arial", 18)).pack(pady=50)
-
+        show_salary_page(content_frame)
     def logout():
-        print("Logging out...")
-    tk.Label(nav_frame, text="Admin Dashboard", font=("Arial", 18, "bold"), bg="#dfefff").pack(side="right", padx=15)
-
+        perform_logout(container)
     # --- Create buttons in nav_frame (horizontal layout) ---
     buttons = [
         ("Reports", show_reports),
