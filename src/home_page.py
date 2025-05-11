@@ -100,9 +100,9 @@ def show_home_page(parent):
     invoice_list.heading("Quantity", text="Quantity")
     invoice_list.heading("Price", text="Price")
 
-    invoice_list.column("Item", width=150, anchor="w")
-    invoice_list.column("Quantity", width=50, anchor="center")
-    invoice_list.column("Price", width=70, anchor="center")
+    invoice_list.column("Item", width=140, anchor="w")
+    invoice_list.column("Quantity", width=30, anchor="center")
+    invoice_list.column("Price", width=30, anchor="center")
 
     invoice_list.pack(fill="both", expand=True, padx=10, pady=10)
 

@@ -1,96 +1,147 @@
-import tkinter as tk
-from tkinter import ttk  # for Combobox
-import mysql.connector
-import pandas as pd
-from datetime import datetime
-
 def record_inventory_page(container):
+    from tkinter import ttk, messagebox
+    import mysql.connector
+    import pandas as pd
+    import tkinter as tk
+    import os
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A6
+
     for widget in container.winfo_children():
         widget.destroy()
-
     container.configure(bg="#fffef2")
 
-    tk.Label(container, text="Inventory Management", font=("Arial", 24), bg="#fffef2").pack(pady=30)
-    tk.Label(container, text="Record Raw Materials Ordered", font=("Arial", 14), bg="#fffef2").pack(pady=10)
+    title = tk.Label(container, text="Inventory Management", font=("Arial", 20, "bold"), bg="#fffef2", fg="#2e3f4f")
+    title.pack(pady=10)
 
-    form_frame = tk.Frame(container, bg="#fffef2")
-    form_frame.pack(pady=20)
+    main_frame = tk.Frame(container, bg="#fffef2")
+    main_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-    tk.Label(form_frame, text="Item Name:", font=("Arial", 12), bg="#fffef2").grid(row=0, column=0, pady=5, sticky="e")
+    # ---------- LEFT SIDE ----------
+    left_frame = tk.Frame(main_frame, bg="#fffef2", width=400)
+    left_frame.pack(side="left", fill="y", padx=10, pady=10)
 
-    # Create ComboBox for selecting inventory item
+    tk.Label(left_frame, text="Order Inventory Items", font=("Arial", 16, "bold"), bg="#fffef2").pack(pady=10)
+
     inventory_items = [
         "Chutney", "Coconut", "Foil Paper", "Plastic Bags", "Oil", "Sambhar Masala",
         "Idli Rawa", "Gas Cylinder", "Cleaning Liquid", "Tissue Paper"
     ]
+    item_var = tk.StringVar(value="Select Item")
+    qty_var = tk.StringVar()
 
-    item_name_combo = ttk.Combobox(form_frame, values=inventory_items, font=("Arial", 12))
-    item_name_combo.grid(row=0, column=1, pady=5, padx=10)
-    item_name_combo.set("Select Item")  # default text
+    ttk.Label(left_frame, text="Item:", font=("Arial", 12)).pack(anchor="w", padx=5)
+    item_combo = ttk.Combobox(left_frame, values=inventory_items, textvariable=item_var, font=("Arial", 12), width=30)
+    item_combo.pack(pady=5)
 
-    tk.Label(form_frame, text="Quantity Ordered:", font=("Arial", 12), bg="#fffef2").grid(row=1, column=0, pady=5, sticky="e")
-    quantity_entry = tk.Entry(form_frame, font=("Arial", 12))
-    quantity_entry.grid(row=1, column=1, pady=5, padx=10)
+    ttk.Label(left_frame, text="Quantity:", font=("Arial", 12)).pack(anchor="w", padx=5)
+    qty_entry = tk.Entry(left_frame, textvariable=qty_var, font=("Arial", 12), width=32)
+    qty_entry.pack(pady=5)
 
-    tk.Label(form_frame, text="Order Date:", font=("Arial", 12), bg="#fffef2").grid(row=2, column=0, pady=5, sticky="e")
-    date_entry = tk.Entry(form_frame, font=("Arial", 12))
-    date_entry.grid(row=2, column=1, pady=5, padx=10)
+    order_list = []
 
-    today_date = datetime.now().strftime("%Y-%m-%d")
-    date_entry.insert(0, today_date)
+    def add_item():
+        item = item_var.get()
+        qty = qty_var.get()
+        if item == "Select Item" or not qty:
+            messagebox.showwarning("Missing Data", "Please select an item and enter quantity.")
+            return
+        order_list.append((item, qty))
+        update_summary()
+        item_var.set("Select Item")
+        qty_var.set("")
+
+    tk.Button(left_frame, text="Add Item", command=add_item, bg="#ffb347", fg="white", font=("Arial", 12), width=20).pack(pady=10)
+
+    # ---------- RIGHT SIDE ----------
+    right_frame = tk.Frame(main_frame, bg="#fffef2")
+    right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+    tk.Label(right_frame, text="Order Summary", font=("Arial", 16, "bold"), bg="#fffef2").pack(pady=(10, 5))
+    
+    # Summary Text Box Frame
+    summary_frame = tk.Frame(right_frame, bg="#fffef2")
+    summary_frame.pack(fill="both", expand=True, padx=10, pady=(0, 5))
+
+    summary_box = tk.Text(summary_frame, height=20, font=("Arial", 12), wrap="word", relief="solid", borderwidth=1)
+    summary_box.pack(fill="both", expand=True)
+    summary_box.config(state="disabled")
+
+    # Save Button Frame
+    button_frame = tk.Frame(right_frame, bg="#fffef2")
+    button_frame.pack(pady=(0, 15))
+
+    def update_summary():
+        summary_box.config(state="normal")
+        summary_box.delete("1.0", tk.END)
+        for idx, (item, qty) in enumerate(order_list, start=1):
+            summary_box.insert(tk.END, f"{idx}. {item} - Qty: {qty}\n")
+        summary_box.config(state="disabled")
 
     def save_order():
-        item_name = item_name_combo.get()
-        quantity = quantity_entry.get()
-        order_date = date_entry.get()
+        if not order_list:
+            messagebox.showwarning("Empty", "No items to save.")
+            return
 
         # Save to MySQL
-        conn = mysql.connector.connect(
-            host="localhost",
-            user="your_username",
-            password="Pravyaa@143",
-            database="naadbramha_db"
-        )
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS inventory_orders (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                item_name VARCHAR(255) NOT NULL,
-                quantity VARCHAR(255) NOT NULL,
-                order_date DATE NOT NULL
+        try:
+            conn = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="Pravyaa@143",
+                database="naadbramha_db"
             )
-        ''')
+            cursor = conn.cursor()
+            cursor.execute(''' 
+                CREATE TABLE IF NOT EXISTS inventory_ordered (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    item_name VARCHAR(255),
+                    quantity VARCHAR(255),
+                    order_date DATE
+                )
+            ''')
+            today = datetime.now().strftime('%Y-%m-%d')
+            for item, qty in order_list:
+                cursor.execute("INSERT INTO inventory_ordered (item_name, quantity, order_date) VALUES (%s, %s, %s)",
+                               (item, qty, today))
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            messagebox.showerror("Database Error", str(e))
+            return
 
-        insert_query = '''
-            INSERT INTO inventory_orders (item_name, quantity, order_date)
-            VALUES (%s, %s, %s)
-        '''
-        values = (item_name, quantity, order_date)
-        cursor.execute(insert_query, values)
+        # Save PDF
+        try:
+            os.makedirs("invoices", exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            pdf_file = f"invoices/Inventory_Order_{timestamp}.pdf"
+            c = canvas.Canvas(pdf_file, pagesize=A6)
+            c.setFont("Helvetica", 10)
+            c.drawString(10, 220, "Naadbramha Inventory Order Summary")
+            c.drawString(10, 205, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            y = 190
+            c.drawString(10, y, "Item".ljust(20) + "Quantity")
+            y -= 10
+            for i, (item, qty) in enumerate(order_list, 1):
+                c.drawString(10, y, f"{i}. {item.ljust(20)} {qty}")
+                y -= 15
+            c.save()
 
-        conn.commit()
-        conn.close()
+            # Attempt to print the PDF
+            try:
+                os.startfile(pdf_file, "print")  # Windows-only printing
+            except Exception as e:
+                messagebox.showerror("PDF Error", f"Could not send to printer: {e}")
 
-        print("Order saved to MySQL database!")
+            messagebox.showinfo("Saved", f"Order saved & PDF generated:\n{pdf_file}")
+        except Exception as e:
+            messagebox.showerror("PDF Error", str(e))
 
-        item_name_combo.set("Select Item")
-        quantity_entry.delete(0, tk.END)
+        order_list.clear()
+        update_summary()
 
-    def export_to_excel():
-        conn = mysql.connector.connect(
-            host="localhost",
-            user="your_username",
-            password="your_password",
-            database="your_database"
-        )
-        df = pd.read_sql("SELECT * FROM inventory_orders", conn)
-        df.to_excel("inventory_orders.xlsx", index=False)
-        conn.close()
-        print("Exported MySQL orders to Excel!")
-
-    save_button = tk.Button(container, text="Save Order", font=("Arial", 12), command=save_order, bg="#ffb347", fg="white")
-    save_button.pack(pady=10)
-
-    export_button = tk.Button(container, text="Export to Excel", font=("Arial", 12), command=export_to_excel, bg="#4CAF50", fg="white")
-    export_button.pack(pady=10)
+    # Save & Print Button
+    save_print_btn = tk.Button(button_frame, text="Save & Print", command=save_order, bg="#6ac29e", fg="white", font=("Arial", 12), width=20)
+    save_print_btn.pack(pady=10)

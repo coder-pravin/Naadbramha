@@ -3,6 +3,8 @@ from attendance_page import show_attendance_page  # Make sure this file exists a
 from inventory_page import record_inventory_page
 from salary_page import show_salary_page
 from logout import perform_logout
+from sales_page import sales_page
+from reports_page import reports
 def show_admin_dashboard(container):
     # Clear any existing content in the main container
     for widget in container.winfo_children():
@@ -25,7 +27,7 @@ def show_admin_dashboard(container):
     # --- Section Functions ---
     def show_reports():
         clear_content()
-        tk.Label(content_frame, text="Reports Page", font=("Arial", 18)).pack(pady=50)
+        reports(content_frame)
 
     def show_attendance():
         clear_content()
@@ -33,7 +35,8 @@ def show_admin_dashboard(container):
 
     def show_sales():
         clear_content()
-        tk.Label(content_frame, text="Sales Page", font=("Arial", 18)).pack(pady=50)
+        sales_page(content_frame)
+
 
     def show_inventory():
         clear_content()
@@ -55,4 +58,5 @@ def show_admin_dashboard(container):
 
     for label, command in buttons:
         tk.Button(nav_frame, text=label, width=15, height=2, command=command).pack(side="left", padx=5)
-        
+    
+    show_attendance_page(content_frame)
